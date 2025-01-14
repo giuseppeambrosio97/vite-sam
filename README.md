@@ -54,6 +54,7 @@ Additional references and dependencies:
 * [onnxruntime](https://github.com/microsoft/onnxruntime)
 * [transformers.js](https://github.com/huggingface/transformers.js)
 * [Shadcn/ui components](https://ui.shadcn.com/)
+* [Geronimo Medium Article](https://medium.com/@geronimo7/in-browser-image-segmentation-with-segment-anything-model-2-c72680170d92)
 
 Other related projects:
 
