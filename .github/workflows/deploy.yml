@@ -71,7 +71,7 @@ jobs:
 
       - name: Build React app
         working-directory: ${{ env.FE_FOLDER }}
-        run: npm run vite-build
+        run: yarn run vite-build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
