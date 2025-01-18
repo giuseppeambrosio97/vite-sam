@@ -1,0 +1,9 @@
+
+/node_modules
+/.next
+.DS_Store
+/app/storage
+/public/onnx
+/app/distilbert-sst
+/app/api
+lib/serverlog.js
