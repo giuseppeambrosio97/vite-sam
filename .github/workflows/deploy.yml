@@ -79,7 +79,7 @@ jobs:
         run: yarn install
 
       - name: Run tree command
-        run: tree -a -I 'next-sam|notebooks|node_modules|.git'
+        run: tree -a -I 'next-sam|notebooks|.git'
 
       # - name: Build React app
       #   working-directory: ${{ env.FE_FOLDER }}
