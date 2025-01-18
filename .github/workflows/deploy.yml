@@ -81,9 +81,9 @@ jobs:
       - name: Run tree command
         run: tree -a -I 'next-sam|notebooks|.git'
 
-      # - name: Build React app
-      #   working-directory: ${{ env.FE_FOLDER }}
-      #   run: yarn run vite-build
+      - name: Build React app
+        working-directory: ${{ env.FE_FOLDER }}
+        run: yarn run vite-build
 
       # - name: Upload artifact
       #   uses: actions/upload-pages-artifact@v2
