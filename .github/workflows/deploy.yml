@@ -60,43 +60,31 @@ jobs:
         # with:
         #   ref: ${{ needs.gh_release.outputs.release_tag }}
 
-      - name: Install tree
-        run: sudo apt-get update && sudo apt-get install -y tree
-
-      - name: Run tree command
-        run: tree -a -I 'next-sam|notebooks|node_modules|.git'
-
       - name: Set up Node.js from .nvmrc
         uses: actions/setup-node@v4
         with:
           node-version-file: ${{ env.FE_FOLDER }}/.nvmrc
 
-      - name: Run tree command
-        run: tree -a -I 'next-sam|notebooks|node_modules|.git'
-
       - name: Install dependencies
         working-directory: ${{ env.FE_FOLDER }}
         run: yarn install
-
-      - name: Run tree command
-        run: tree -a -I 'next-sam|notebooks|.git'
 
       - name: Build React app
         working-directory: ${{ env.FE_FOLDER }}
         run: yarn run vite-build
 
-      # - name: Upload artifact
-      #   uses: actions/upload-pages-artifact@v2
-      #   with:
-      #     path: ${{ env.FE_FOLDER }}/dist
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ${{ env.FE_FOLDER }}/dist
 
-  # deploy:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: github-pages
-  #     url: ${{ steps.deployment.outputs.page_url }}
-  #   steps:
-  #     - name: Deploy to GitHub Pages
-  #       id: deployment
-  #       uses: actions/deploy-pages@v2
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
