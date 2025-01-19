@@ -23,12 +23,13 @@ export default function App() {
   const [imageEncoded, setImageEncoded] = useState(false);
   const [status, setStatus] = useState("");
 
+  const [imageURL, setImageURL] = useState("./image_square.png");
+
   const samWorker = useRef<Worker | null>(null);
   const [image, setImage] = useState<HTMLCanvasElement | null>(null);
-  const [mask, setMask] = useState(null);
-  const [imageURL, setImageURL] = useState("./image_square.png");
-  const canvasEl = useRef(null);
-  const fileInputEl = useRef(null);
+  const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
+  const canvasEl = useRef<HTMLCanvasElement | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Start encoding image
   const encodeImageClick = async () => {
@@ -55,7 +56,7 @@ export default function App() {
       label: 1,
     };
 
-    samWorker.current.postMessage({ type: "decodeMask", data: point });
+    samWorker.current?.postMessage({ type: "decodeMask", data: point });
 
     setLoading(true);
     setStatus("Decoding");
@@ -119,15 +120,16 @@ export default function App() {
   };
 
   // Upload new image
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    const dataURL = window.URL.createObjectURL(file);
-
-    setImage(null);
-    setMask(null);
-    setImageEncoded(false);
-    setStatus("Encode image");
-    setImageURL(dataURL);
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files ? e.target.files[0] : null;
+    if (file) {
+      const dataURL = window.URL.createObjectURL(file);
+      setImage(null);
+      setMask(null);
+      setImageEncoded(false);
+      setStatus("Encode image");
+      setImageURL(dataURL);
+    }
   };
 
   // Load web worker
@@ -236,8 +238,8 @@ export default function App() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      <GitHubButton className="absolute top-4 right-4" />
       <Card className="w-full max-w-2xl">
-        <GitHubButton className="absolute top-4 right-4" />
         <CardHeader>
           <CardTitle className="flex flex-col gap-2">
             <p>
@@ -275,7 +277,7 @@ export default function App() {
               )}
               <Button
                 onClick={() => {
-                  fileInputEl.current.click();
+                  imageFileInputRef.current?.click();
                 }}
                 variant="secondary"
                 disabled={loading}
@@ -295,7 +297,7 @@ export default function App() {
         </CardContent>
       </Card>
       <input
-        ref={fileInputEl}
+        ref={imageFileInputRef}
         hidden
         accept="image/*"
         type="file"
