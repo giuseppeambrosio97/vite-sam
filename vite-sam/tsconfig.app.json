@@ -17,9 +17,7 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
 
     /* Linting */
@@ -27,7 +25,13 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    
+    /* Type Declarations */
+    "types": [
+      "@webgpu/types",
+      "vite/client"
+    ]
   },
   "include": ["src"]
 }

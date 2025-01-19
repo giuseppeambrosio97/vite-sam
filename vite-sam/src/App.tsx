@@ -1,43 +1,41 @@
-import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LoaderCircle, Crop, ImageUp, Fan, Github } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Crop, Fan, ImageUp, LoaderCircle } from "lucide-react";
 
+import { IMAGE_SIZE } from "@/lib/constants";
 import {
-  resizeCanvas,
-  mergeMasks,
-  maskImageCanvas,
-  resizeAndPadBox,
   canvasToFloat32Array,
+  maskImageCanvas,
+  mergeMasks,
+  resizeAndPadBox,
+  resizeCanvas,
   sliceTensorMask,
 } from "@/lib/imageutils";
+import GitHubButton from "@/components/app/GitHubButton";
+
 
 export default function App() {
-  // resize+pad all images to 1024x1024
-  const imageSize = { w: 1024, h: 1024 };
-
-  // state
   const [device, setDevice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [imageEncoded, setImageEncoded] = useState(false);
   const [status, setStatus] = useState("");
 
-  const samWorker = useRef(null);
-  const [image, setImage] = useState(null);
-  const [mask, setMask] = useState(null);
   const [imageURL, setImageURL] = useState("./image_square.png");
-  const canvasEl = useRef(null);
-  const fileInputEl = useRef(null);
 
-  
+  const samWorker = useRef<Worker | null>(null);
+  const [image, setImage] = useState<HTMLCanvasElement | null>(null);
+  const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
+  const canvasEl = useRef<HTMLCanvasElement | null>(null);
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Start encoding image
   const encodeImageClick = async () => {
-    samWorker.current.postMessage({
+    samWorker.current?.postMessage({
       type: "encodeImage",
-      data: canvasToFloat32Array(resizeCanvas(image, imageSize)),
+      data: canvasToFloat32Array(resizeCanvas(image, IMAGE_SIZE)),
     });
 
     setLoading(true);
@@ -53,12 +51,12 @@ export default function App() {
 
     // input image will be resized to 1024x1024 -> normalize mouse pos to 1024x1024
     const point = {
-      x: ((event.clientX - rect.left) / canvas.width) * imageSize.w,
-      y: ((event.clientY - rect.top) / canvas.height) * imageSize.h,
+      x: ((event.clientX - rect.left) / canvas.width) * IMAGE_SIZE.w,
+      y: ((event.clientY - rect.top) / canvas.height) * IMAGE_SIZE.h,
       label: 1,
     };
 
-    samWorker.current.postMessage({ type: "decodeMask", data: point });
+    samWorker.current?.postMessage({ type: "decodeMask", data: point });
 
     setLoading(true);
     setStatus("Decoding");
@@ -76,7 +74,7 @@ export default function App() {
       if (prevMask) {
         return mergeMasks(maskCanvas, prevMask);
       } else {
-        return resizeCanvas(maskCanvas, imageSize);
+        return resizeCanvas(maskCanvas, IMAGE_SIZE);
       }
     });
   };
@@ -111,7 +109,7 @@ export default function App() {
   };
 
   // Crop image with mask
-  const cropClick = (event) => {
+  const cropClick = () => {
     const link = document.createElement("a");
     link.href = maskImageCanvas(image, mask).toDataURL();
     link.download = "crop.png";
@@ -122,15 +120,16 @@ export default function App() {
   };
 
   // Upload new image
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    const dataURL = window.URL.createObjectURL(file);
-
-    setImage(null);
-    setMask(null);
-    setImageEncoded(false);
-    setStatus("Encode image");
-    setImageURL(dataURL);
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files ? e.target.files[0] : null;
+    if (file) {
+      const dataURL = window.URL.createObjectURL(file);
+      setImage(null);
+      setMask(null);
+      setImageEncoded(false);
+      setStatus("Encode image");
+      setImageURL(dataURL);
+    }
   };
 
   // Load web worker
@@ -239,26 +238,12 @@ export default function App() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
+      <GitHubButton className="absolute top-4 right-4" />
       <Card className="w-full max-w-2xl">
-        <div className="absolute top-4 right-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              window.open(
-                "https://github.com/giuseppeambrosio97/vite-sam",
-                "_blank"
-              )
-            }
-          >
-            <Github className="w-4 h-4 mr-2" />
-            View on GitHub
-          </Button>
-        </div>
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="flex flex-col gap-2">
             <p>
-              Clientside Image Segmentation with onnxruntime-web and Meta's SAM2
+              Clientside Image Segmentation with onnxruntime-web and Meta's SAM2 🥹❤️‍🩹🧃
             </p>
             <p
               className={cn(
@@ -267,7 +252,6 @@ export default function App() {
               )}
             >
               <Fan
-                color="#000"
                 className="w-6 h-6 animate-[spin_2.5s_linear_infinite] direction-reverse"
               />
               Running on {device}
@@ -282,7 +266,7 @@ export default function App() {
                 disabled={loading || imageEncoded}
               >
                 <p className="flex items-center gap-2">
-                  {loading && <LoaderCircle className="animate-spin w-6 h-6" />}
+                  {loading && <LoaderCircle className="animate-spin" />}
                   {status}
                 </p>
               </Button>
@@ -293,7 +277,7 @@ export default function App() {
               )}
               <Button
                 onClick={() => {
-                  fileInputEl.current.click();
+                  imageFileInputRef.current?.click();
                 }}
                 variant="secondary"
                 disabled={loading}
@@ -313,7 +297,7 @@ export default function App() {
         </CardContent>
       </Card>
       <input
-        ref={fileInputEl}
+        ref={imageFileInputRef}
         hidden
         accept="image/*"
         type="file"

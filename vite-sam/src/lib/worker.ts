@@ -29,7 +29,7 @@ self.onmessage = async (e) => {
 
   } else if (type === 'decodeMask') {
     const point = data
-    const decodingResults = await sam.decode(point) // decodingResults = Tensor [B=1, Masks, W, H]
+    const decodingResults = await sam.decodeImage(point) // decodingResults = Tensor [B=1, Masks, W, H]
 
     self.postMessage({ type: 'decodeMaskResult', data: decodingResults })
 
