@@ -102,7 +102,7 @@ export function maskImageCanvas(imageCanvas: HTMLCanvasElement, maskCanvas: HTML
   
   // input: onnx Tensor [B=1, Masks, W, H], output: Canvas [W, H, 4]
   export function sliceTensorMask(maskTensor: { dims: number[], cpuData: Uint8Array }, maskIdx: number): HTMLCanvasElement {
-    const [bs, noMasks, width, height] = maskTensor.dims;
+    const [, , width, height] = maskTensor.dims;
     const stride = width * height;
     const start = stride * maskIdx,
       end = start + stride;

@@ -1,37 +1,33 @@
 import * as ort from "onnxruntime-web/all";
-// ort.env.wasm.numThreads=1
-// ort.env.wasm.simd = false;
-
-const ENCODER_URL =
-  "https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_encoder.with_runtime_opt.ort";
-const DECODER_URL =
-  "https://huggingface.co/g-ronimo/sam2-tiny/resolve/main/sam2_hiera_tiny_decoder.onnx";
+import { DECODER_URL, ENCODER_URL } from "@/lib/constants";
 
 export class SAM2 {
-  bufferEncoder = null;
-  bufferDecoder = null;
-  sessionEncoder = null;
-  sessionDecoder = null;
+  bufferEncoder: ArrayBuffer | null = null;
+  bufferDecoder: ArrayBuffer | null = null;
+  sessionEncoder: ort.InferenceSession | null = null;
+  sessionDecoder: ort.InferenceSession | null = null;
   image_encoded = null;
 
-  constructor() {}
-
   async downloadModels() {
-    this.bufferEncoder = await this.downloadModel(ENCODER_URL);
-    this.bufferDecoder = await this.downloadModel(DECODER_URL);
+    const [encoder, decoder] = await Promise.all([
+      this.downloadModel(ENCODER_URL),
+      this.downloadModel(DECODER_URL),
+    ]);
+  
+    this.bufferEncoder = encoder;
+    this.bufferDecoder = decoder;
   }
+  
 
-  async downloadModel(url) {
+  private async downloadModel(url: string): Promise<ArrayBuffer | null> {
     // step 1: check if cached
-    const root = await navigator.storage.getDirectory();
     const filename = url.split("/").pop();
-
     if (!filename) {
       throw new Error("Invalid URL or missing file name");
     }
-
     console.log(`Downloading model: ${filename}`);
 
+    const root = await navigator.storage.getDirectory();
     let fileHandle = await root
       .getFileHandle(filename)
       .catch((e) => console.error("File does not exist:", filename, e));
@@ -42,7 +38,7 @@ export class SAM2 {
     }
 
     // step 2: download if not cached
-    console.log("File " + filename + " not in cache, downloading from " + url);
+    console.log(`File ${filename} not in cache, downloading from ${url}`);
     let buffer = null;
     try {
       buffer = await fetch(url, {
@@ -52,7 +48,7 @@ export class SAM2 {
         mode: "cors",
       }).then((response) => response.arrayBuffer());
     } catch (e) {
-      console.error("Download of " + url + " failed: ", e);
+      console.error(`Download of ${url} failed: ${e}`);
       return null;
     }
 
@@ -63,9 +59,9 @@ export class SAM2 {
       await writable.write(buffer);
       await writable.close();
 
-      console.log("Stored " + filename);
+      console.log(`Stored ${filename}`);
     } catch (e) {
-      console.error("Storage of " + filename + " failed: ", e);
+      console.error(`Storage of ${filename} failed: ${e}`);
     }
     return buffer;
   }
@@ -80,29 +76,27 @@ export class SAM2 {
     };
   }
 
-  async getORTSession(model) {
+  private async getORTSession(model: ArrayBuffer) {
     /** Creating a session with executionProviders: {"webgpu", "cpu"} fails
      *  => "Error: multiple calls to 'initWasm()' detected."
      *  but ONLY in Safari and Firefox (wtf)
      *  seems to be related to web worker, see https://github.com/microsoft/onnxruntime/issues/22113
      *  => loop through each ep, catch e if not available and move on
      */
-    let session = null;
-    for (let ep of ["webgpu", "cpu"]) {
+    for (const ep of ["webgpu", "cpu"]) {
       try {
         console.log(`Trying to create ORT session for model ${JSON.stringify(model)} with ${ep}`);
-        session = await ort.InferenceSession.create(model, {
+        const session = await ort.InferenceSession.create(model, {
           executionProviders: [ep],
         });
         console.log(`Successfully created ORT session for model ${JSON.stringify(model)} with ${ep}`);
+        return [session, ep];
       } catch (e) {
         console.error(`Failed to create ORT session ${ep}`)
         console.error(e);
-        continue;
       }
-
-      return [session, ep];
     }
+    return null;
   }
 
   async getEncoderSession() {
@@ -130,7 +124,7 @@ export class SAM2 {
     };
   }
 
-  async decode(point) {
+  async decodeImage(point) {
     const [session, device] = await this.getDecoderSession();
 
     const inputs = {
