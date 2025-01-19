@@ -1,11 +1,21 @@
 import * as ort from "onnxruntime-web/all";
 import { DECODER_URL, ENCODER_URL } from "@/lib/constants";
 
+enum ExecutionProviderType {
+  WEB_GPU = "webgpu",
+  CPU = "cpu",
+}
+
+type ORTSession = {
+  session: ort.InferenceSession;
+  executionProvider: ExecutionProviderType;
+};
+
 export class SAM2 {
   bufferEncoder: ArrayBuffer | null = null;
   bufferDecoder: ArrayBuffer | null = null;
-  sessionEncoder: ort.InferenceSession | null = null;
-  sessionDecoder: ort.InferenceSession | null = null;
+  sessionEncoder: ORTSession | null = null;
+  sessionDecoder: ORTSession | null = null;
   image_encoded = null;
 
   async downloadModels() {
@@ -13,11 +23,9 @@ export class SAM2 {
       this.downloadModel(ENCODER_URL),
       this.downloadModel(DECODER_URL),
     ]);
-  
     this.bufferEncoder = encoder;
     this.bufferDecoder = decoder;
   }
-  
 
   private async downloadModel(url: string): Promise<ArrayBuffer | null> {
     // step 1: check if cached
@@ -28,7 +36,7 @@ export class SAM2 {
     console.log(`Downloading model: ${filename}`);
 
     const root = await navigator.storage.getDirectory();
-    let fileHandle = await root
+    const fileHandle = await root
       .getFileHandle(filename)
       .catch((e) => console.error("File does not exist:", filename, e));
 
@@ -72,31 +80,41 @@ export class SAM2 {
 
     return {
       success: success,
-      device: success ? this.sessionEncoder[1] : null,
+      device: success ? this.sessionEncoder?.executionProvider : null,
     };
   }
 
-  private async getORTSession(model: ArrayBuffer) {
+  private async getORTSession(model: ArrayBuffer): Promise<ORTSession> {
     /** Creating a session with executionProviders: {"webgpu", "cpu"} fails
      *  => "Error: multiple calls to 'initWasm()' detected."
      *  but ONLY in Safari and Firefox (wtf)
      *  seems to be related to web worker, see https://github.com/microsoft/onnxruntime/issues/22113
      *  => loop through each ep, catch e if not available and move on
      */
-    for (const ep of ["webgpu", "cpu"]) {
+    const executionProviders = Object.values(ExecutionProviderType);
+    for (const executionProvider of executionProviders) {
       try {
-        console.log(`Trying to create ORT session for model ${JSON.stringify(model)} with ${ep}`);
+        console.log(
+          `Trying to create ORT session for model ${JSON.stringify(
+            model
+          )} with ${executionProvider}`
+        );
         const session = await ort.InferenceSession.create(model, {
-          executionProviders: [ep],
+          executionProviders: [executionProvider],
         });
-        console.log(`Successfully created ORT session for model ${JSON.stringify(model)} with ${ep}`);
-        return [session, ep];
+        console.log(
+          `Successfully created ORT session for model ${JSON.stringify(
+            model
+          )} with ${executionProvider}`
+        );
+        return { session, executionProvider };
       } catch (e) {
-        console.error(`Failed to create ORT session ${ep}`)
+        console.error(`Failed to create ORT session ${executionProvider}`);
         console.error(e);
       }
     }
-    return null;
+    throw new Error(`Failed to create ORT session: Could not initialize session with any available execution provider ${executionProviders}. " +
+      "Please check your environment or try a different provider.`);
   }
 
   async getEncoderSession() {
@@ -114,7 +132,7 @@ export class SAM2 {
   }
 
   async encodeImage(inputTensor) {
-    const [session, device] = await this.getEncoderSession();
+    const {session} = await this.getEncoderSession();
     const results = await session.run({ image: inputTensor });
 
     this.image_encoded = {
@@ -125,7 +143,7 @@ export class SAM2 {
   }
 
   async decodeImage(point) {
-    const [session, device] = await this.getDecoderSession();
+    const {session} = await this.getDecoderSession();
 
     const inputs = {
       image_embed: this.image_encoded.image_embed,
