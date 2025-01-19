@@ -1,3 +1,4 @@
+import { NA_STRING } from '@/lib/constants';
 import { useState, useEffect, useCallback } from 'react';
 
 type WebGPUInfo = {
@@ -123,7 +124,7 @@ export const useHardwareInfo = (): UseHardwareInfoReturn => {
         cores: navigator.hardwareConcurrency,
         platform,
         userAgent: navigator.userAgent,
-        deviceMemory: navigatorWithMemory.deviceMemory ? `${navigatorWithMemory.deviceMemory} GB` : 'Not available',
+        deviceMemory: navigatorWithMemory.deviceMemory ? `${navigatorWithMemory.deviceMemory} GB` : NA_STRING,
         language: navigator.language,
       };
       addDebugMessage('CPU information retrieved');

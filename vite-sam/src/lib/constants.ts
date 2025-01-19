@@ -5,3 +5,5 @@ export const DECODER_URL =
 
 // resize+pad all images to 1024x1024
 export const IMAGE_SIZE = { w: 1024, h: 1024 };
+
+export const NA_STRING = 'N/A';

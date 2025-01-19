@@ -2,6 +2,7 @@ import { useHardwareInfo } from '@/hooks/use-hardware-info';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import { NA_STRING } from '@/lib/constants';
 
 export default function HardwareInfo() {
   const {
@@ -39,7 +40,7 @@ export default function HardwareInfo() {
             {Object.entries(data).map(([key, value]) => (
               <div key={key} className="grid grid-cols-2 gap-2">
                 <span className="font-medium">{formatKey(key)}:</span>
-                <span>{value?.toString() ?? 'N/A'}</span> {/* Replaced || with ?? */}
+                <span>{value?.toString() ?? NA_STRING}</span>
               </div>
             ))}
           </div>
