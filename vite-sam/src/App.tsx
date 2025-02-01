@@ -15,7 +15,7 @@ import {
   sliceTensorMask,
 } from "@/lib/imageutils";
 import GitHubButton from "@/components/app/GitHubButton";
-
+import HardwareInfoModal from "./components/app/hardware/HardwareInfoModal";
 
 export default function App() {
   const [device, setDevice] = useState(null);
@@ -238,12 +238,17 @@ export default function App() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <GitHubButton className="absolute top-4 right-4" />
+      <div className="absolute top-4 right-4 flex flex-col gap-2">
+        <GitHubButton />
+        <HardwareInfoModal />
+      </div>
+
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="flex flex-col gap-2">
             <p>
-              Clientside Image Segmentation with onnxruntime-web and Meta's SAM2 🥹❤️‍🩹🧃
+              Clientside Image Segmentation with onnxruntime-web and Meta's SAM2
+              🥹❤️‍🩹🧃
             </p>
             <p
               className={cn(
@@ -251,9 +256,7 @@ export default function App() {
                 device ? "visible" : "invisible"
               )}
             >
-              <Fan
-                className="w-6 h-6 animate-[spin_2.5s_linear_infinite] direction-reverse"
-              />
+              <Fan className="w-6 h-6 animate-[spin_2.5s_linear_infinite] direction-reverse" />
               Running on {device}
             </p>
           </CardTitle>

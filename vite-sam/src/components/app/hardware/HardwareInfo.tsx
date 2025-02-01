@@ -1,10 +1,18 @@
-import { useHardwareInfo } from '@/hooks/use-hardware-info';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
-import { NA_STRING } from '@/lib/constants';
+import { useHardwareInfo } from "@/hooks/use-hardware-info";
+import { Card, CardContent, } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { NA_STRING } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { ClassNameValue } from "tailwind-merge";
 
-export default function HardwareInfo() {
+type HardwareInfoProps = Readonly<{
+  className: ClassNameValue;
+}>;
+
+export default function HardwareInfo({
+  className,
+}: HardwareInfoProps) {
   const {
     webGPUInfo,
     webGLInfo,
@@ -16,7 +24,7 @@ export default function HardwareInfo() {
   } = useHardwareInfo();
 
   const formatKey = (key: string): string => {
-    return key.replace(/([A-Z])/g, ' $1').trim();
+    return key.replace(/([A-Z])/g, " $1").trim();
   };
 
   const renderInfoSection = <T extends Record<string, unknown>>(
@@ -57,19 +65,17 @@ export default function HardwareInfo() {
   };
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Hardware Information</CardTitle>
+    <Card className={cn("w-full max-w-2xl", "relative", className)}>
+      <CardContent className="p-0 pt-4">
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
+          className="absolute right-0 top-0"
           onClick={refreshHardwareInfo}
           disabled={isLoading}
         >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
         </Button>
-      </CardHeader>
-      <CardContent>
         {error && (
           <div className="mb-4 p-4 bg-red-50 text-red-600 rounded">
             Error: {error}
@@ -77,18 +83,18 @@ export default function HardwareInfo() {
         )}
 
         <div className="space-y-6">
-          {renderInfoSection(webGPUInfo, 'WebGPU Information')}
-          {renderInfoSection(webGLInfo, 'WebGL Information')}
-          {renderInfoSection(cpuInfo, 'CPU Information')}
+          {renderInfoSection(webGPUInfo, "WebGPU Information")}
+          {renderInfoSection(webGLInfo, "WebGL Information")}
+          {renderInfoSection(cpuInfo, "CPU Information")}
 
           <div>
             <h3 className="text-lg font-semibold mb-2">Debug Information</h3>
             <pre className="whitespace-pre-wrap text-sm p-2 rounded">
-              {debugInfo.join('\n')}
+              {debugInfo.join("\n")}
             </pre>
           </div>
         </div>
       </CardContent>
     </Card>
   );
-};
+}
