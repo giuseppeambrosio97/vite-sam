@@ -74,7 +74,7 @@ jobs:
         run: yarn run vite-build
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ env.FE_FOLDER }}/dist
 
