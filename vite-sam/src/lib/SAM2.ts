@@ -133,7 +133,7 @@ export class SAM2 {
     };
   }
 
-  async decodeImage(point: Point) {
+  async decodeImage(point: Point): Promise<DecoderOutput> {
     const { session } = await this.getDecoderSession();
 
     if (!this.image_encoded) throw Error("The image is not encoded!");
@@ -153,6 +153,6 @@ export class SAM2 {
       orig_im_size: new ort.Tensor("int32", [1024, 1024], [2]),
     };
 
-    return await session.run(inputs);
+    return (await session.run(inputs)) as DecoderOutput;
   }
 }

@@ -79,6 +79,10 @@ declare global {
         | EncodeImageDoneMessage
         | DecodeMaskResultMessage;
 
+    type DecoderOutput = {
+        iou_predictions: ort.Tensor<"float32">;
+        masks: ort.Tensor<"float32">;
+    }
 }
 
 export { }

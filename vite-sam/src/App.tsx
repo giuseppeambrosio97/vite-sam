@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ export default function App() {
   const samWorker = useRef<Worker | null>(null);
   const [image, setImage] = useState<HTMLCanvasElement | null>(null);
   const [mask, setMask] = useState<HTMLCanvasElement | null>(null);
-  const canvasEl = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Start encoding image
@@ -43,16 +43,18 @@ export default function App() {
   };
 
   // Start decoding, prompt with mouse coords
-  const imageClick = (event) => {
+  const imageClick = (
+    event: React.MouseEvent<HTMLCanvasElement, MouseEvent>
+  ) => {
     if (!imageEncoded) return;
 
-    const canvas = canvasEl.current;
-    const rect = event.target.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    const rect = event.currentTarget.getBoundingClientRect();
 
     // input image will be resized to 1024x1024 -> normalize mouse pos to 1024x1024
     const point = {
-      x: ((event.clientX - rect.left) / canvas.width) * IMAGE_SIZE.w,
-      y: ((event.clientY - rect.top) / canvas.height) * IMAGE_SIZE.h,
+      x: ((event.clientX - rect.left) / canvas!.width) * IMAGE_SIZE.w,
+      y: ((event.clientY - rect.top) / canvas!.height) * IMAGE_SIZE.h,
       label: 1,
     };
 
@@ -63,24 +65,22 @@ export default function App() {
   };
 
   // Decoding finished -> parse result and update mask
-  const handleDecodingResults = (decodingResults) => {
+  const handleDecodingResults = (decodingResults: DecoderOutput) => {
     // SAM2 returns 3 mask along with scores -> select best one
     const maskTensors = decodingResults.masks;
     const maskScores = decodingResults.iou_predictions.cpuData;
     const bestMaskIdx = maskScores.indexOf(Math.max(...maskScores));
     const maskCanvas = sliceTensorMask(maskTensors, bestMaskIdx);
 
-    setMask((prevMask) => {
-      if (prevMask) {
-        return mergeMasks(maskCanvas, prevMask);
-      } else {
-        return resizeCanvas(maskCanvas, IMAGE_SIZE);
-      }
-    });
+    setMask((prevMask) =>
+      prevMask
+        ? mergeMasks(maskCanvas, prevMask)
+        : resizeCanvas(maskCanvas, IMAGE_SIZE)
+    );
   };
 
   // Handle web worker messages
-  const onWorkerMessage = (event) => {
+  const onWorkerMessage = useCallback((event: MessageEvent) => {
     const { type, data } = event.data;
 
     if (type == "pong") {
@@ -106,10 +106,14 @@ export default function App() {
       setLoading(false);
       setStatus("Ready. Click on image");
     }
-  };
+  }, []);
 
   // Crop image with mask
   const cropClick = () => {
+    if (!image || !mask) {
+      console.error("Image or Mask null, unable to perform crop!");
+      return;
+    }
     const link = document.createElement("a");
     link.href = maskImageCanvas(image, mask).toDataURL();
     link.download = "crop.png";
@@ -144,7 +148,7 @@ export default function App() {
 
       setLoading(true);
     }
-  }, [onWorkerMessage, handleDecodingResults]);
+  }, [onWorkerMessage]);
 
   // Load image, pad to square and store in offscreen canvas
   useEffect(() => {
@@ -152,10 +156,7 @@ export default function App() {
       const img = new Image();
       img.src = imageURL;
       img.onload = function () {
-        const largestDim =
-          img.naturalWidth > img.naturalHeight
-            ? img.naturalWidth
-            : img.naturalHeight;
+        const largestDim = Math.max(img.naturalWidth, img.naturalHeight);
         const box = resizeAndPadBox(
           { h: img.naturalHeight, w: img.naturalWidth },
           { h: largestDim, w: largestDim }
@@ -166,7 +167,7 @@ export default function App() {
         canvas.height = largestDim;
 
         canvas
-          .getContext("2d")
+          .getContext("2d")!
           .drawImage(
             img,
             0,
@@ -186,7 +187,7 @@ export default function App() {
   // Offscreen canvas changed, draw it
   useEffect(() => {
     if (image) {
-      const canvas = canvasEl.current;
+      const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(
@@ -206,7 +207,7 @@ export default function App() {
   // Mask changed, draw original image and mask on top with some alpha
   useEffect(() => {
     if (mask) {
-      const canvas = canvasEl.current;
+      const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
 
       ctx.drawImage(
@@ -273,7 +274,7 @@ export default function App() {
                   {status}
                 </p>
               </Button>
-              {mask && (
+              {mask && image && (
                 <Button onClick={cropClick} variant="secondary">
                   <Crop /> Crop
                 </Button>
@@ -290,7 +291,7 @@ export default function App() {
             </div>
             <div className="flex justify-center">
               <canvas
-                ref={canvasEl}
+                ref={canvasRef}
                 width={512}
                 height={512}
                 onClick={imageClick}
