@@ -35,7 +35,7 @@ export default function App() {
   const encodeImageClick = async () => {
     samWorker.current?.postMessage({
       type: "encodeImage",
-      data: canvasToFloat32Array(resizeCanvas(image, IMAGE_SIZE)),
+      data: canvasToFloat32Array(resizeCanvas(image!, IMAGE_SIZE)),
     });
 
     setLoading(true);
@@ -97,7 +97,6 @@ export default function App() {
       setLoading(true);
       setStatus("Loading model");
     } else if (type == "encodeImageDone") {
-      // alert(data.durationMs)
       setImageEncoded(true);
       setLoading(false);
       setStatus("Ready. Click on image");
@@ -122,9 +121,10 @@ export default function App() {
     link.click();
     document.body.removeChild(link);
   };
+  
 
   // Upload new image
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
     if (file) {
       const dataURL = window.URL.createObjectURL(file);
@@ -188,9 +188,9 @@ export default function App() {
   useEffect(() => {
     if (image) {
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(
+      const ctx = canvas!.getContext("2d");
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+      ctx!.drawImage(
         image,
         0,
         0,
@@ -198,19 +198,19 @@ export default function App() {
         image.height,
         0,
         0,
-        canvas.width,
-        canvas.height
+        canvas!.width,
+        canvas!.height
       );
     }
   }, [image]);
 
   // Mask changed, draw original image and mask on top with some alpha
   useEffect(() => {
-    if (mask) {
+    if (mask && image) {
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas?.getContext("2d");
 
-      ctx.drawImage(
+      ctx?.drawImage(
         image,
         0,
         0,
@@ -218,11 +218,11 @@ export default function App() {
         image.height,
         0,
         0,
-        canvas.width,
-        canvas.height
+        canvas!.width,
+        canvas!.height
       );
-      ctx.globalAlpha = 0.4;
-      ctx.drawImage(
+      ctx!.globalAlpha = 0.4;
+      ctx!.drawImage(
         mask,
         0,
         0,
@@ -230,10 +230,10 @@ export default function App() {
         mask.height,
         0,
         0,
-        canvas.width,
-        canvas.height
+        canvas!.width,
+        canvas!.height
       );
-      ctx.globalAlpha = 1;
+      ctx!.globalAlpha = 1;
     }
   }, [mask, image]);
 
