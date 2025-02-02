@@ -124,7 +124,7 @@ export default function App() {
   
 
   // Upload new image
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
     if (file) {
       const dataURL = window.URL.createObjectURL(file);
