@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Crop, Fan, ImageUp, LoaderCircle } from "lucide-react";
+import { Crop, Eraser, Fan, ImageUp, LoaderCircle } from "lucide-react";
 
 import { IMAGE_SIZE } from "@/lib/constants";
 import {
@@ -121,7 +121,6 @@ export default function App() {
     link.click();
     document.body.removeChild(link);
   };
-  
 
   // Upload new image
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,6 +236,26 @@ export default function App() {
     }
   }, [mask, image]);
 
+  const eraseClick = () => {
+    if (image) {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+
+      ctx?.drawImage(
+        image,
+        0,
+        0,
+        image.width,
+        image.height,
+        0,
+        0,
+        canvas!.width,
+        canvas!.height
+      );
+      setMask(null);
+    }
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <div className="absolute top-4 right-4 flex flex-col gap-2">
@@ -277,6 +296,11 @@ export default function App() {
               {mask && image && (
                 <Button onClick={cropClick} variant="secondary">
                   <Crop /> Crop
+                </Button>
+              )}
+              {mask && image && (
+                <Button onClick={eraseClick} variant="secondary">
+                  <Eraser /> Clear
                 </Button>
               )}
               <Button

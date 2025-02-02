@@ -18,7 +18,7 @@ export default function HardwareInfoModal() {
           <Monitor /> View Hardware Info
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[60vh] overflow-auto gap-1">
+      <DialogContent className="fixed top-[45%] max-w-3xl h-[80%] overflow-auto gap-1">
         <DialogHeader>
           <DialogTitle>Hardware Information</DialogTitle>
           <DialogDescription>
