@@ -1,5 +1,6 @@
 import * as ort from "onnxruntime-web/all";
 import { DECODER_URL, ENCODER_URL } from "@/lib/constants";
+import { TypedTensor } from "onnxruntime-web";
 
 enum ExecutionProviderType {
   WEB_GPU = "webgpu",
@@ -11,12 +12,56 @@ type ORTSession = {
   executionProvider: ExecutionProviderType;
 };
 
+type TImageEncoded = { high_res_feats_0: ort.Tensor; high_res_feats_1: ort.Tensor; image_embed: ort.Tensor; }
+
 export class SAM2 {
   bufferEncoder: ArrayBuffer | null = null;
   bufferDecoder: ArrayBuffer | null = null;
   sessionEncoder: ORTSession | null = null;
   sessionDecoder: ORTSession | null = null;
-  image_encoded = null;
+  image_encoded: TImageEncoded | null = null;
+
+
+  private async downloadModel(url: string): Promise<ArrayBuffer | null> {
+    const filename = url.split("/").pop();
+    if (!filename) throw new Error("Invalid URL or missing file name");
+
+    console.log(`Downloading model: ${filename}`);
+    const root = await navigator.storage.getDirectory();
+
+    // Step 1: Try to retrieve from cache
+    try {
+      const fileHandle = await root.getFileHandle(filename);
+      const file = await fileHandle.getFile();
+      if (file.size > 0) return await file.arrayBuffer();
+    } catch {
+      console.log(`File ${filename} not found in cache.`);
+    }
+
+    // Step 2: Fetch from the network
+    try {
+      console.log(`Downloading ${filename} from ${url}`);
+      const response = await fetch(url, { mode: "cors", headers: { Origin: location.origin } });
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
+      const buffer = await response.arrayBuffer();
+
+      // Step 3: Store in cache
+      try {
+        const fileHandle = await root.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(buffer);
+        await writable.close();
+        console.log(`Stored ${filename} in cache.`);
+      } catch (storageError) {
+        console.error(`Failed to store ${filename}:`, storageError);
+      }
+
+      return buffer;
+    } catch (downloadError) {
+      console.error(`Download failed for ${filename}:`, downloadError);
+      return null;
+    }
+  }
 
   async downloadModels() {
     const [encoder, decoder] = await Promise.all([
@@ -27,52 +72,7 @@ export class SAM2 {
     this.bufferDecoder = decoder;
   }
 
-  private async downloadModel(url: string): Promise<ArrayBuffer | null> {
-    // step 1: check if cached
-    const filename = url.split("/").pop();
-    if (!filename) {
-      throw new Error("Invalid URL or missing file name");
-    }
-    console.log(`Downloading model: ${filename}`);
 
-    const root = await navigator.storage.getDirectory();
-    const fileHandle = await root
-      .getFileHandle(filename)
-      .catch((e) => console.error("File does not exist:", filename, e));
-
-    if (fileHandle) {
-      const file = await fileHandle.getFile();
-      if (file.size > 0) return await file.arrayBuffer();
-    }
-
-    // step 2: download if not cached
-    console.log(`File ${filename} not in cache, downloading from ${url}`);
-    let buffer = null;
-    try {
-      buffer = await fetch(url, {
-        headers: new Headers({
-          Origin: location.origin,
-        }),
-        mode: "cors",
-      }).then((response) => response.arrayBuffer());
-    } catch (e) {
-      console.error(`Download of ${url} failed: ${e}`);
-      return null;
-    }
-
-    // step 3: store
-    try {
-      const fileHandle = await root.getFileHandle(filename, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(buffer);
-      await writable.close();
-
-      console.log(`Stored ${filename}`);
-    } catch (e) {
-      console.error(`Storage of ${filename} failed: ${e}`);
-    }
-    return buffer;
-  }
 
   async createSessions() {
     const success =
@@ -94,45 +94,36 @@ export class SAM2 {
     const executionProviders = Object.values(ExecutionProviderType);
     for (const executionProvider of executionProviders) {
       try {
-        console.log(
-          `Trying to create ORT session for model ${JSON.stringify(
-            model
-          )} with ${executionProvider}`
-        );
+        console.log(`Trying to create ORT session with ${executionProvider}`);
         const session = await ort.InferenceSession.create(model, {
           executionProviders: [executionProvider],
         });
-        console.log(
-          `Successfully created ORT session for model ${JSON.stringify(
-            model
-          )} with ${executionProvider}`
-        );
+        console.log(`Successfully created ORT session with ${executionProvider}`);
         return { session, executionProvider };
       } catch (e) {
         console.error(`Failed to create ORT session ${executionProvider}`);
         console.error(e);
       }
     }
-    throw new Error(`Failed to create ORT session: Could not initialize session with any available execution provider ${executionProviders}. " +
-      "Please check your environment or try a different provider.`);
+    throw new Error(`Failed to create ORT session: Could not initialize session with any available execution provider ${executionProviders}.`);
   }
 
   async getEncoderSession() {
     if (!this.sessionEncoder)
-      this.sessionEncoder = await this.getORTSession(this.bufferEncoder);
+      this.sessionEncoder = await this.getORTSession(this.bufferEncoder!);
 
     return this.sessionEncoder;
   }
 
   async getDecoderSession() {
     if (!this.sessionDecoder)
-      this.sessionDecoder = await this.getORTSession(this.bufferDecoder);
+      this.sessionDecoder = await this.getORTSession(this.bufferDecoder!);
 
     return this.sessionDecoder;
   }
 
-  async encodeImage(inputTensor) {
-    const {session} = await this.getEncoderSession();
+  async encodeImage(inputTensor: TypedTensor<"float32">) {
+    const { session } = await this.getEncoderSession();
     const results = await session.run({ image: inputTensor });
 
     this.image_encoded = {
@@ -142,8 +133,10 @@ export class SAM2 {
     };
   }
 
-  async decodeImage(point) {
-    const {session} = await this.getDecoderSession();
+  async decodeImage(point: Point): Promise<DecoderOutput> {
+    const { session } = await this.getDecoderSession();
+
+    if (!this.image_encoded) throw Error("The image is not encoded!");
 
     const inputs = {
       image_embed: this.image_encoded.image_embed,
@@ -160,6 +153,6 @@ export class SAM2 {
       orig_im_size: new ort.Tensor("int32", [1024, 1024], [2]),
     };
 
-    return await session.run(inputs);
+    return (await session.run(inputs)) as DecoderOutput;
   }
 }

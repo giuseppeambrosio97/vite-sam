@@ -1,6 +1,6 @@
 
 type Size = { w: number, h: number };
-type MaskTensor = { dims: number[], cpuData: Uint8Array };
+type MaskTensor = { dims: number[], cpuData: Float32Array };
 
 /**
  * Applies a mask image to an image canvas using globalCompositeOperation.
